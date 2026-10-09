@@ -8,7 +8,7 @@ const JOGOS = {
 
 // Termos buscados no título (sem diferenciar maiúscula/minúscula).
 // Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
-const TERMOS = ["notas", "chá"];
+const TERMOS = ["notas", "chá", "patch notes"];
 
 const STATE_FILE = "seen.json";
 const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
