@@ -46,11 +46,9 @@ const permitido = (item) =>
 
 const bateNoFiltro = (titulo) => TERMOS.some((t) => norm(titulo).includes(t));
 
-// A API devolve o ID "antigo" do anúncio (ex.: 1846018067931636). Ele não vale em
-// store.steampowered.com/news/app/.../view/ (que usa outro ID), mas vale no formato
-// clássico da Comunidade Steam abaixo.
-const linkDoPost = (appid, gid) =>
-  `https://steamcommunity.com/games/${appid}/announcements/detail/${gid}`;
+// O link certo é o próprio "url" que a API devolve para o post
+// (steamstore-a.akamaihd.net/news/externalpost/...), que redireciona para o post correto.
+const linkDoPost = (item) => item.url;
 
 const dataBR = (unix) =>
   new Date(unix * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
@@ -63,13 +61,7 @@ if (MODO_TESTE) {
       const alvo = todos.filter(permitido).find((i) => bateNoFiltro(i.title));
 
       if (alvo) {
-        // Os links entre < > não geram prévia no Discord: servem só para comparar qual abre.
-        await enviar(
-          `🧪 TESTE: 🎮 **${nome}**: ${alvo.title}\n${linkDoPost(appid, alvo.gid)}\n\n` +
-          `Alternativas para comparar (sem prévia):\n` +
-          `<${alvo.url}>\n` +
-          `<https://store.steampowered.com/news/app/${appid}/view/${alvo.gid}>`
-        );
+        await enviar(`🧪 TESTE: 🎮 **${nome}**: ${alvo.title}\n${linkDoPost(alvo)}`);
       } else {
         await enviar(`🧪 TESTE: nenhum post oficial de **${nome}** bate com o filtro nos últimos ${todos.length} posts da API.`);
       }
@@ -112,7 +104,7 @@ for (const [appid, nome] of Object.entries(JOGOS)) {
     if (primeiraVez) continue;
     if (!bateNoFiltro(item.title)) continue;
 
-    await enviar(`🎮 **${nome}**: ${item.title}\n${linkDoPost(appid, item.gid)}`);
+    await enviar(`🎮 **${nome}**: ${item.title}\n${linkDoPost(item)}`);
   }
 
   seen[appid] = [...jaVistos].slice(-100); // guarda só os 100 mais recentes
