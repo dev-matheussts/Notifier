@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 
 // appid: nome do jogo (só para aparecer na mensagem)
 const JOGOS = {
-  440: "Team Fortress 2",
+  985810: "Grand Chase",
   // 570: "Dota 2",
 };
 
