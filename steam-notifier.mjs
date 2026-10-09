@@ -8,7 +8,10 @@ const JOGOS = {
 // Normaliza para NFC e minúsculas: resolve o "á" escrito de forma decomposta.
 // Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
 const norm = (s) => s.normalize("NFC").toLowerCase();
-const TERMOS = ["notas", "chá"].map(norm);
+const TERMOS = ["notas", "chá", "teatime", "☕", "🍵"].map(norm);
+
+// Deixe false no uso normal. Só ligue (true) para investigar o que a API está devolvendo.
+const DIAGNOSTICO = false;
 
 // true = só posts oficiais da Steam (os únicos com link que abre no formato abaixo)
 const SO_ANUNCIOS_OFICIAIS = true;
@@ -60,19 +63,19 @@ if (MODO_TESTE) {
         await enviar(`🧪 TESTE: nenhum post oficial de **${nome}** bate com o filtro nos últimos ${todos.length} posts da API.`);
       }
 
-      // Diagnóstico: o que a API realmente está devolvendo
-      const linhas = todos
-        .slice(0, 8)
-        .map((i) => `${dataBR(i.date)} · ${i.feedname} · ${i.title.slice(0, 70)}`)
-        .join("\n");
-      await enviar(`🔎 Últimos posts que a API devolveu para **${nome}**:\n${linhas}`);
+      if (DIAGNOSTICO) {
+        const linhas = todos
+          .slice(0, 8)
+          .map((i) => `${dataBR(i.date)} · ${i.feedname} · ${i.title.slice(0, 70)}`)
+          .join("\n");
+        await enviar(`🔎 Últimos posts que a API devolveu para **${nome}**:\n${linhas}`);
+      }
     } catch (e) {
       console.error(`Falha em ${nome}: ${e.message}`);
     }
   }
   process.exit(0); // não mexe no seen.json
 }
-
 // ---------- MODO NORMAL ----------
 const seen = existsSync(STATE_FILE)
   ? JSON.parse(readFileSync(STATE_FILE, "utf8"))
