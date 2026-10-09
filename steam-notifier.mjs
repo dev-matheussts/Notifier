@@ -5,9 +5,14 @@ const JOGOS = {
   985810: "Grand Chase",
 };
 
-// Termos buscados no título (sem diferenciar maiúscula/minúscula).
+// Normaliza para NFC e minúsculas: resolve o "á" escrito de forma decomposta.
 // Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
-const TERMOS = ["notas", "chá"];
+const norm = (s) => s.normalize("NFC").toLowerCase();
+const TERMOS = ["notas", "chá"].map(norm);
+
+// true = só posts oficiais da Steam (os únicos com link que abre no formato abaixo)
+const SO_ANUNCIOS_OFICIAIS = true;
+const FEED_OFICIAL = "steam_community_announcements";
 
 const STATE_FILE = "seen.json";
 const WEBHOOK = process.env.DISCORD_WEBHOOK_URL;
@@ -17,40 +22,50 @@ async function enviar(texto) {
   const r = await fetch(WEBHOOK, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ content: texto }),
+    body: JSON.stringify({ content: texto.slice(0, 1900) }), // limite do Discord: 2000
   });
   if (!r.ok) console.error(`Discord respondeu HTTP ${r.status}`);
 }
 
+// Devolve TODOS os posts (novo -> antigo), sem filtrar
 async function buscarPosts(appid) {
-  const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${appid}&count=20&maxlength=300`;
+  const url = `https://api.steampowered.com/ISteamNews/GetNewsForApp/v2/?appid=${appid}&count=40&maxlength=300`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const { appnews } = await res.json();
-  return appnews?.newsitems ?? []; // a API devolve do mais novo para o mais antigo
+  return appnews?.newsitems ?? [];
 }
 
-const bateNoFiltro = (titulo) =>
-  TERMOS.some((t) => titulo.toLowerCase().includes(t));
+const permitido = (item) =>
+  !SO_ANUNCIOS_OFICIAIS || item.feedname === FEED_OFICIAL;
+
+const bateNoFiltro = (titulo) => TERMOS.some((t) => norm(titulo).includes(t));
 
 const linkDoPost = (appid, gid) =>
   `https://store.steampowered.com/news/app/${appid}/view/${gid}`;
 
-// ---------- MODO TESTE: manda o último post de cada jogo e sai ----------
+const dataBR = (unix) =>
+  new Date(unix * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
+
+// ---------- MODO TESTE: manda o último post que bate no filtro + lista de diagnóstico ----------
 if (MODO_TESTE) {
   for (const [appid, nome] of Object.entries(JOGOS)) {
     try {
-      const items = await buscarPosts(appid);
-      const alvo = items.find((i) => bateNoFiltro(i.title));
+      const todos = await buscarPosts(appid);
+      const alvo = todos.filter(permitido).find((i) => bateNoFiltro(i.title));
+
       if (alvo) {
         await enviar(`🧪 TESTE: 🎮 **${nome}**: ${alvo.title}\n${linkDoPost(appid, alvo.gid)}`);
-      } else if (items[0]) {
-        await enviar(
-          `🧪 TESTE: nenhum dos últimos ${items.length} posts de **${nome}** bate com o filtro. Mais recente: ${items[0].title}\n${linkDoPost(appid, items[0].gid)}`
-        );
       } else {
-        await enviar(`🧪 TESTE: a API não retornou posts para **${nome}**.`);
+        await enviar(`🧪 TESTE: nenhum post oficial de **${nome}** bate com o filtro nos últimos ${todos.length} posts da API.`);
       }
+
+      // Diagnóstico: o que a API realmente está devolvendo
+      const linhas = todos
+        .slice(0, 8)
+        .map((i) => `${dataBR(i.date)} · ${i.feedname} · ${i.title.slice(0, 70)}`)
+        .join("\n");
+      await enviar(`🔎 Últimos posts que a API devolveu para **${nome}**:\n${linhas}`);
     } catch (e) {
       console.error(`Falha em ${nome}: ${e.message}`);
     }
@@ -66,7 +81,7 @@ const seen = existsSync(STATE_FILE)
 for (const [appid, nome] of Object.entries(JOGOS)) {
   let items;
   try {
-    items = await buscarPosts(appid);
+    items = (await buscarPosts(appid)).filter(permitido);
   } catch (e) {
     console.error(`Falha em ${nome}: ${e.message}`);
     continue;
