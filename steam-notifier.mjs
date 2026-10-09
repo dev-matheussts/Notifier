@@ -6,14 +6,16 @@ const JOGOS = {
 };
 
 // Normaliza para NFC e minúsculas: resolve o "á" escrito de forma decomposta.
-// Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
 const norm = (s) => s.normalize("NFC").toLowerCase();
+
+// "notas" e "chá" como combinado; "teatime" e as xícaras pegam a série Tomo's Teatime.
+// Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
 const TERMOS = ["notas", "chá", "teatime", "☕", "🍵"].map(norm);
 
 // Deixe false no uso normal. Só ligue (true) para investigar o que a API está devolvendo.
 const DIAGNOSTICO = false;
 
-// true = só posts oficiais da Steam (os únicos com link que abre no formato abaixo)
+// true = só posts oficiais da Steam
 const SO_ANUNCIOS_OFICIAIS = true;
 const FEED_OFICIAL = "steam_community_announcements";
 
@@ -44,13 +46,16 @@ const permitido = (item) =>
 
 const bateNoFiltro = (titulo) => TERMOS.some((t) => norm(titulo).includes(t));
 
+// A API devolve o ID "antigo" do anúncio (ex.: 1846018067931636). Ele não vale em
+// store.steampowered.com/news/app/.../view/ (que usa outro ID), mas vale no formato
+// clássico da Comunidade Steam abaixo.
 const linkDoPost = (appid, gid) =>
-  `https://store.steampowered.com/news/app/${appid}/view/${gid}`;
+  `https://steamcommunity.com/games/${appid}/announcements/detail/${gid}`;
 
 const dataBR = (unix) =>
   new Date(unix * 1000).toLocaleDateString("pt-BR", { timeZone: "America/Recife" });
 
-// ---------- MODO TESTE: manda o último post que bate no filtro + lista de diagnóstico ----------
+// ---------- MODO TESTE: manda o último post que bate no filtro ----------
 if (MODO_TESTE) {
   for (const [appid, nome] of Object.entries(JOGOS)) {
     try {
@@ -58,7 +63,13 @@ if (MODO_TESTE) {
       const alvo = todos.filter(permitido).find((i) => bateNoFiltro(i.title));
 
       if (alvo) {
-        await enviar(`🧪 TESTE: 🎮 **${nome}**: ${alvo.title}\n${linkDoPost(appid, alvo.gid)}`);
+        // Os links entre < > não geram prévia no Discord: servem só para comparar qual abre.
+        await enviar(
+          `🧪 TESTE: 🎮 **${nome}**: ${alvo.title}\n${linkDoPost(appid, alvo.gid)}\n\n` +
+          `Alternativas para comparar (sem prévia):\n` +
+          `<${alvo.url}>\n` +
+          `<https://store.steampowered.com/news/app/${appid}/view/${alvo.gid}>`
+        );
       } else {
         await enviar(`🧪 TESTE: nenhum post oficial de **${nome}** bate com o filtro nos últimos ${todos.length} posts da API.`);
       }
@@ -76,6 +87,7 @@ if (MODO_TESTE) {
   }
   process.exit(0); // não mexe no seen.json
 }
+
 // ---------- MODO NORMAL ----------
 const seen = existsSync(STATE_FILE)
   ? JSON.parse(readFileSync(STATE_FILE, "utf8"))
