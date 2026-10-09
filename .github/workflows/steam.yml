@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      teste:
+        description: "Teste: enviar o último post de cada jogo para o Discord"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,6 +23,7 @@ jobs:
       - run: node steam-notifier.mjs
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TESTE: ${{ inputs.teste }}
       - name: Salvar estado
         run: |
           git config user.name "steam-bot"
