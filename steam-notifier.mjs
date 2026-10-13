@@ -10,7 +10,7 @@ const norm = (s) => s.normalize("NFC").toLowerCase();
 
 // "notas" e "chá" como combinado; "teatime" e as xícaras pegam a série Tomo's Teatime.
 // Mantive o acento em "chá" de propósito, para não casar com "chat", "chance" etc.
-const TERMOS = ["notas", "chá", "teatime", "☕", "Manutenção Programada"].map(norm);
+const TERMOS = ["notas", "chá", "teatime", "☕", "Scheduled Maintenance"].map(norm);
 
 // Deixe false no uso normal. Só ligue (true) para investigar o que a API está devolvendo.
 const DIAGNOSTICO = false;
